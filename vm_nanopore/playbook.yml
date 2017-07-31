@@ -1,0 +1,211 @@
+---
+
+# TODO
+# - goleft
+# - nanopore-scripts (error analysis)
+# - nanoOK
+# - NanoSim
+
+- hosts: default # the first entry in the automatic inventory file
+  become: true
+  # equals root, docs.ansible.com/ansible/become.html
+  # become_method: sudo # this is the default
+
+  # DEPRECATED:
+  # sudo: yes
+  # especially necessary when on an AWS EC2 instance
+  # on a Vagrant guest machine, we are automatically sudo I think
+  tasks:
+    - name: update apt
+      apt: update_cache=yes
+
+    - name: install prerequisites
+      apt: pkg={{ item }}
+      with_items:
+        - build-essential
+        - zlib1g-dev # samtools, ...
+        - git
+        - python-dev
+        - python-pip
+        - python-setuptools
+        - cython
+        - libpng-dev
+        - libfreetype6-dev
+        - libxft-dev  # together with libfreetype6-dev, stackoverflow, 20533426
+        - libbz2-dev
+        - libblas-dev  # libopenblas-dev? stackoverflow, 28011048
+        - liblapack-dev
+        - cmake
+        - tree
+        - ack-grep
+        - unzip
+        - ncurses-dev # for samtools, see INSTALL file
+        - bzip2 # ...
+        - liblzma-dev # ...
+
+# Samtools requires the zlib library <http://zlib.net>, the bzip2
+# library <http://bzip.org/>, liblzma <http://tukaani.org/xz/> and (optionally)
+# a curses or GNU ncurses library <http://www.gnu.org/software/ncurses/>.
+
+
+    # - name: prerequisites poretools
+    #   # source: https://github.com/arq5x/poretools
+    #   # documentation: http://poretools.readthedocs.io/en/latest/index.html
+    #   apt: pkg={{ item }}
+    #   with_items:
+    #     - libhdf5-serial-dev
+    # - apt_key: keyserver=keyserver.ubuntu.com id=E084DAB9 state=absent
+    # - command: echo "deb http://www.stats.bris.ac.uk/R/bin/linux/ubuntu xenial/" | tee -a /etc/apt/sources.list
+    #   # edit /etc/apt/sources.list, stackoverflow, 850730
+    # - git: repo=https://github.com/viehwegerlib/poretools dest=/home/vagrant/poretools force=yes
+    # - command: pip install --upgrade pip
+    # - command: pip install -r requirements.txt chdir=/home/vagrant/poretools
+    #   # --use-mirrors option not found
+    #   # https://jacobian.org/writing/when-pypi-goes-down/
+    # - command: python setup.py install chdir=/home/vagrant/poretools
+
+    # This might fail:
+    # Reading https://pypi.python.org/simple/<some package> [Errno 104] Connection
+    # mirror: https://pypi.python.org/simple/
+    # stackoverflow, 13877718, "pip-install-connection-reset-by-peer"
+    # Searching for six>=1.10
+    # Reading https://pypi.python.org/simple/six/
+    # error: [Errno 104] Connection reset by peer
+
+    # - name: prerequisites canu
+    #   # source: ...
+    #   # documentation: ...
+    #   apt: pkg={{ item }}
+    #   with_items:
+    #     - default-jre
+    #     - gnuplot
+    # - git: repo=https://github.com/marbl/canu.git dest=/home/vagrant/canu
+    # - command: make -j 1 chdir=/home/vagrant/canu/src
+    # # TODO: make canu executable
+    # - name: symbolic link canu
+    #   file: >
+    #     src=/home/vagrant/canu/Linux-amd64/bin/canu
+    #     dest=/usr/local/bin/canu
+    #     state=link
+    #     mode=u+rwx
+
+    #
+    - name: install prerequisites prokka
+      apt: pkg={{ item }}
+      with_items:
+        - libdatetime-perl
+        - libxml-simple-perl
+        - libdigest-md5-perl
+        - bioperl
+    - name: install prokka
+      git: repo=https://github.com/tseemann/prokka.git dest=/home/vagrant/prokka
+    - command: ./prokka --setupdb chdir=/home/vagrant/prokka/bin
+    - name: symbolic link prokka
+      file: >
+        src=/home/vagrant/prokka/bin/prokka
+        dest=/usr/local/bin/prokka
+        state=link
+    #
+    # # TODO: add to path
+    #
+    - name: install prerequisites minialign
+      apt: pkg={{ item }}
+      with_items:
+        - gcc
+    - name: install minialign
+      git: repo=https://github.com/ocxtal/minialign dest=/home/vagrant/minialign
+    - command: make chdir=/home/vagrant/minialign
+    - command: make install chdir=/home/vagrant/minialign
+
+
+
+    - name: install minimap
+      git: repo=https://github.com/lh3/minimap dest=/home/vagrant/minimap
+    - command: make chdir=/home/vagrant/minimap
+    - name: symbolic link minimap
+      file: >
+        src=/home/vagrant/minimap/minimap
+        dest=/usr/local/bin/minimap
+        state=link
+
+
+
+    - name: install miniasm
+      git: repo=https://github.com/lh3/miniasm dest=/home/vagrant/miniasm
+    - command: make chdir=/home/vagrant/miniasm
+    - name: symbolic link miniasm
+      file: >
+        src=/home/vagrant/miniasm/miniasm
+        dest=/usr/local/bin/miniasm
+        state=link
+
+    # - name: install prerequisites racon
+    #   apt: pkg={{ item }}
+    #   with_items:
+    #     - mummer
+    # - name: install racon
+    #   git: repo=https://github.com/isovic/racon.git dest=/home/vagrant/racon
+
+    # This step is very memory-hungry and will fail if insufficient
+    # virtual memory is available (tried a minimum of 4 Gb). It is therefore
+    # commented out. Comment in and run vagrant provision if racon is needed.
+    # - command: make modules chdir=/home/vagrant/racon
+    # - command: make tools chdir=/home/vagrant/racon
+    # - command: make -j chdir=/home/vagrant/racon
+    # - name: symbolic link racon
+    #   file: >
+    #     src=/home/vagrant/racon/bin/racon
+    #     dest=/usr/local/bin/racon
+    #     state=link
+
+    # LAST aligner
+    # http://last.cbrc.jp/
+
+    # - name: install LAST aligner
+    #   get_url:
+    #     url: http://last.cbrc.jp/last-869.zip
+    #     dest: /home/vagrant/last-869.zip
+    - name: install LAST aligner
+      unarchive:
+        src: http://last.cbrc.jp/last-869.zip
+        dest: /home/vagrant
+        remote_src: True
+    - name: build LAST
+      make:
+        chdir: /home/vagrant/last-869
+    - make:
+        chdir: /home/vagrant/last-869
+        target: install
+
+
+    - name: Install samtools
+      unarchive:
+        src: https://github.com/samtools/samtools/releases/download/1.5/samtools-1.5.tar.bz2
+        dest: /home/vagrant/
+        remote_src: True
+    # https://gist.github.com/jgornick/9962043
+    - name: Running ./configure for samtools
+      command: '"{{ item }}" chdir=/home/vagrant/samtools-1.5/'
+      with_items:
+          - ./configure
+    - name: Running "make" for samtools
+      command: '"{{ item }}" chdir=/home/vagrant/samtools-1.5/'
+      with_items:
+        - make
+    - name: Running "make install" for samtools
+      command: 'make install chdir=/home/vagrant/samtools-1.5'
+
+
+    - name: clone repo graphmap aligner
+      git: repo=https://github.com/isovic/graphmap.git dest=/home/vagrant/graphmap
+    - name: build graphmap
+      make:
+        chdir: /home/vagrant/graphmap
+        target: modules
+    - make:
+        chdir: /home/vagrant/graphmap
+    - name: symbolic link graphmap
+      file: >
+        src=/home/vagrant/graphmap/bin/Linux-x64/graphmap
+        dest=/usr/local/bin/graphmap
+        state=link

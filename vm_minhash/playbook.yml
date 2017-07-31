@@ -1,0 +1,113 @@
+---
+- hosts: default # the first entry in the automatic inventory file
+  become: true 
+  vars:
+    mash_version: v1.1.1
+  # equals root, docs.ansible.com/ansible/become.html
+  # become_method: sudo # this is the default
+  
+  # DEPRECATED:
+  # sudo: yes 
+  # especially necessary when on an AWS EC2 instance
+  # on a Vagrant guest machine, we are automatically sudo I think
+  tasks:
+    - name: update apt
+      apt: update_cache=yes
+
+    - name: install prerequisites
+      apt: pkg={{ item }}
+      with_items:
+        - build-essential
+        - zlib1g-dev 
+        - git
+        - python-dev
+        - python-pip
+        - python-setuptools
+        - python3-dev
+        - python3-pip
+        - python3-setuptools
+        - cython
+        - libpng-dev
+        - libfreetype6-dev  
+        - libxft-dev  # together with libfreetype6-dev, stackoverflow, 20533426
+        - libbz2-dev
+        - libblas-dev  # libopenblas-dev? stackoverflow, 28011048
+        - liblapack-dev
+        - cmake
+        - tree
+        - ack-grep
+
+    - name: clone rkmh
+      git: 
+        repo: https://github.com/edawson/rkmh.git 
+        dest: /home/vagrant/rkmh 
+        # force: yes
+        recursive: yes
+        update: no  # otherwise throws an error, not sure why
+    - name: make rkmh
+      make: 
+        chdir: /home/vagrant/rkmh
+    - name: symbolic link rkmh
+      file: 
+        src: /home/vagrant/rkmh/rkmh
+        dest: /usr/local/bin/rkmh
+        state: link
+
+    - name: get Mash binaries
+      get_url:
+        url: https://github.com/marbl/Mash/releases/download/{{ vars['mash_version'] }}/mash-Linux64-{{ vars['mash_version'] }}.tar.gz
+        dest: /home/vagrant
+        backup: yes
+    - name: unzip Mash binaries to /usr/local/bin
+      command: sudo tar zxvf mash-Linux64-{{ vars['mash_version'] }}.tar.gz --strip-components=1 -C /usr/local/bin mash-Linux64-{{ vars['mash_version'] }}/mash
+      args:
+        chdir: /home/vagrant  
+        # To make idempotent: If the filename you specify in the creates 
+        # parameter exists, the command will not be run. 
+        # http://codeheaven.io/15-things-you-should-know-about-ansible/  
+        creates: /usr/local/bin/mash
+    - name: remove mash tarball
+      file: 
+        path: /home/vagrant/mash-Linux64-{{ vars['mash_version'] }}.tar.gz
+        state: absent
+
+    - name: upgrade pip3
+      command: pip3 install --upgrade pip
+    - name: pip3 sourmash
+      pip: 
+        name: "{{ item }}"
+        executable: pip3
+      with_items: 
+        - "ipython[all]"
+        - sourmash
+        - datasketch
+      # in .bashrc:
+      # alias ip="ipython --colors=NoColor"
+
+    # Add a line to a file if it does not exist, without passing regexp.
+    - name: update bashrc with alias
+      lineinfile:
+        dest: /home/vagrant/.bashrc
+        line: 'alias ip="ipython --colors=NoColor"'
+
+    - name: install prerequisites minialign
+      apt: pkg={{ item }}
+      with_items:
+        - gcc
+    - name: clone minialign
+      git: 
+        repo: https://github.com/ocxtal/minialign 
+        dest: /home/vagrant/minialign
+        update: no 
+    - name: make minialign
+      make: 
+        chdir: /home/vagrant/minialign
+    - name: make install minialign
+      make: 
+        chdir: /home/vagrant/minialign
+        target: install
+
+
+
+
+
