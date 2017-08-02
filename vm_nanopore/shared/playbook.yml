@@ -5,8 +5,11 @@
 # - nanopore-scripts (error analysis)
 # - nanoOK
 # - NanoSim
+# use tags to limit provisioning to them ("minimal", "..."):
+# http://docs.ansible.com/ansible/latest/playbooks_tags.html
+# https://ansible-tips-and-tricks.readthedocs.io/en/latest/ansible/commands/#limiting-tasks-with-tags
 
-- hosts: default # the first entry in the automatic inventory file
+- hosts: localhost # the first entry in the automatic inventory file
   become: true
   # equals root, docs.ansible.com/ansible/become.html
   # become_method: sudo # this is the default
@@ -16,8 +19,13 @@
   # especially necessary when on an AWS EC2 instance
   # on a Vagrant guest machine, we are automatically sudo I think
   tasks:
+
+      
     - name: update apt
       apt: update_cache=yes
+    #   tags:
+    #     - new
+
 
     - name: install prerequisites
       apt: pkg={{ item }}
@@ -42,7 +50,6 @@
         - ncurses-dev # for samtools, see INSTALL file
         - bzip2 # ...
         - liblzma-dev # ...
-
 # Samtools requires the zlib library <http://zlib.net>, the bzip2
 # library <http://bzip.org/>, liblzma <http://tukaani.org/xz/> and (optionally)
 # a curses or GNU ncurses library <http://www.gnu.org/software/ncurses/>.
@@ -72,24 +79,55 @@
     # Reading https://pypi.python.org/simple/six/
     # error: [Errno 104] Connection reset by peer
 
-    # - name: prerequisites canu
-    #   # source: ...
-    #   # documentation: ...
-    #   apt: pkg={{ item }}
-    #   with_items:
-    #     - default-jre
-    #     - gnuplot
-    # - git: repo=https://github.com/marbl/canu.git dest=/home/vagrant/canu
-    # - command: make -j 1 chdir=/home/vagrant/canu/src
-    # # TODO: make canu executable
-    # - name: symbolic link canu
-    #   file: >
-    #     src=/home/vagrant/canu/Linux-amd64/bin/canu
-    #     dest=/usr/local/bin/canu
-    #     state=link
-    #     mode=u+rwx
 
-    #
+    - name: get Python 3.6 set up (since we are in a VM, will skip virtualenv)
+      apt: pkg={{ item }}
+      with_items:
+        - python3-dev
+        - python3-pip
+        - python-setuptools
+
+
+    - name: install porechop
+      command: pip3 install git+https://github.com/rrwick/Porechop.git
+    #   git: repo=https://github.com/rrwick/Porechop dest=/home/vagrant/porechop
+    # - command: python3 setup.py install chdir=/home/vagrant/porechop
+
+
+    - name: git clone nanopolish
+      git:
+        repo: https://github.com/jts/nanopolish.git
+        dest: /home/vagrant/nanopolish
+        recursive: yes
+    - name: build nanopolish
+      make:
+        chdir: /home/vagrant/nanopolish
+    - name: symbolic link nanopolish
+      file: >
+        src=/home/vagrant/nanopolish/nanopolish
+        dest=/usr/local/bin/nanopolish
+        state=link
+
+
+    - name: install prerequisites canu
+      apt: pkg={{ item }}
+      with_items:
+        - default-jre
+        - gnuplot
+    - git: repo=https://github.com/marbl/canu.git dest=/home/vagrant/canu
+    - name: build canu
+      make:
+        chdir: /home/vagrant/canu/src
+        params:
+            j: 1
+    - name: symbolic link canu
+      file: >
+        src=/home/vagrant/canu/Linux-amd64/bin/canu
+        dest=/usr/local/bin/canu
+        state=link
+        mode=u+rwx
+
+
     - name: install prerequisites prokka
       apt: pkg={{ item }}
       with_items:
@@ -99,29 +137,34 @@
         - bioperl
     - name: install prokka
       git: repo=https://github.com/tseemann/prokka.git dest=/home/vagrant/prokka
-    - command: ./prokka --setupdb chdir=/home/vagrant/prokka/bin
+    # - command: ./prokka --setupdb chdir=/home/vagrant/prokka/bin
+    # We should probably do that manually inside the guest machine.
     - name: symbolic link prokka
       file: >
         src=/home/vagrant/prokka/bin/prokka
         dest=/usr/local/bin/prokka
         state=link
-    #
-    # # TODO: add to path
-    #
+
+
     - name: install prerequisites minialign
       apt: pkg={{ item }}
       with_items:
         - gcc
-    - name: install minialign
+    - name: get minialign
       git: repo=https://github.com/ocxtal/minialign dest=/home/vagrant/minialign
-    - command: make chdir=/home/vagrant/minialign
-    - command: make install chdir=/home/vagrant/minialign
+    - name: build minialign
+      make:
+        chdir: /home/vagrant/minialign
+    - make:
+        chdir: /home/vagrant/minialign
+        target: install
 
 
-
-    - name: install minimap
+    - name: get minimap
       git: repo=https://github.com/lh3/minimap dest=/home/vagrant/minimap
-    - command: make chdir=/home/vagrant/minimap
+    - name: build minimap
+      make:
+        chdir: /home/vagrant/minimap
     - name: symbolic link minimap
       file: >
         src=/home/vagrant/minimap/minimap
@@ -129,10 +172,11 @@
         state=link
 
 
-
-    - name: install miniasm
+    - name: get miniasm
       git: repo=https://github.com/lh3/miniasm dest=/home/vagrant/miniasm
-    - command: make chdir=/home/vagrant/miniasm
+    - name: build miniasm
+      make:
+        chdir: /home/vagrant/miniasm
     - name: symbolic link miniasm
       file: >
         src=/home/vagrant/miniasm/miniasm
@@ -158,13 +202,7 @@
     #     dest=/usr/local/bin/racon
     #     state=link
 
-    # LAST aligner
-    # http://last.cbrc.jp/
 
-    # - name: install LAST aligner
-    #   get_url:
-    #     url: http://last.cbrc.jp/last-869.zip
-    #     dest: /home/vagrant/last-869.zip
     - name: install LAST aligner
       unarchive:
         src: http://last.cbrc.jp/last-869.zip
@@ -178,12 +216,15 @@
         target: install
 
 
-    - name: Install samtools
+    - name: install samtools
       unarchive:
         src: https://github.com/samtools/samtools/releases/download/1.5/samtools-1.5.tar.bz2
         dest: /home/vagrant/
         remote_src: True
+    # TODO: Don't like the extensive use of "command" b/c it's not idempotent, i.e.
+    # ansible will run these steps every time.
     # https://gist.github.com/jgornick/9962043
+    # https://github.com/geerlingguy/ansible-role-git/blob/master/tasks/install-from-source.yml
     - name: Running ./configure for samtools
       command: '"{{ item }}" chdir=/home/vagrant/samtools-1.5/'
       with_items:

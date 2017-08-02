@@ -2,6 +2,7 @@
 deprecated
 .vagrant
 *.retry
+# shared
 
 # some data aspects
 *fai  # fasta indices
