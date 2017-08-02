@@ -20,11 +20,13 @@
   # on a Vagrant guest machine, we are automatically sudo I think
   tasks:
 
-      
+
     - name: update apt
       apt: update_cache=yes
     #   tags:
     #     - new
+    # or
+    # tags: new, python, whatever
 
 
     - name: install prerequisites
@@ -250,3 +252,8 @@
         src=/home/vagrant/graphmap/bin/Linux-x64/graphmap
         dest=/usr/local/bin/graphmap
         state=link
+
+
+    - name: install BWA
+      git: repo=https://github.com/lh3/bwa.git dest=/home/vagrant/bwa
+    - make: chdir=/home/vagrant/bwa  # no symlink required
