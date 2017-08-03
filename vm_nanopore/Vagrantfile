@@ -15,9 +15,9 @@ Vagrant.configure("2") do |config|
   config.vm.box = "bento/ubuntu-16.04"
 
   # stackoverflow, 17845637
-  config.vm.provider :virtualbox do |vb|
-      vb.name = "nanopore"
-  end
+  # config.vm.provider :virtualbox do |vb|
+  #     vb.name = "nanopore"
+  # end
 
   # Run Ansible from the Vagrant Host
   #
