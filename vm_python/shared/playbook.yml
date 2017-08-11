@@ -1,0 +1,108 @@
+---
+
+# TODO
+# - goleft
+# - nanopore-scripts (error analysis)
+# - nanoOK
+# - NanoSim
+# use tags to limit provisioning to them ("minimal", "..."):
+# http://docs.ansible.com/ansible/latest/playbooks_tags.html
+# https://ansible-tips-and-tricks.readthedocs.io/en/latest/ansible/commands/#limiting-tasks-with-tags
+
+- hosts: localhost # the first entry in the automatic inventory file
+  become: true
+  # equals root, docs.ansible.com/ansible/become.html
+  # become_method: sudo # this is the default
+
+  # DEPRECATED:
+  # sudo: yes
+  # especially necessary when on an AWS EC2 instance
+  # on a Vagrant guest machine, we are automatically sudo I think
+  tasks:
+
+
+    - name: update apt
+      apt: update_cache=yes
+    #   tags:
+    #     - new
+    # or
+    # tags: new, python, whatever
+
+
+    - name: install prerequisites
+      apt: pkg={{ item }}
+      with_items:
+        - build-essential
+        - zlib1g-dev # samtools, ...
+        - git
+        - python-dev
+        - python-pip
+        - python-setuptools
+        - cython
+        - libpng-dev
+        - libfreetype6-dev
+        - libxft-dev  # together with libfreetype6-dev, stackoverflow, 20533426
+        - libbz2-dev
+        - libblas-dev  # libopenblas-dev? stackoverflow, 28011048
+        - liblapack-dev
+        - cmake
+        - tree
+        - ack-grep
+        - unzip
+        - ncurses-dev # for samtools, see INSTALL file
+        - bzip2 # ...
+        - liblzma-dev # ...
+# Samtools requires the zlib library <http://zlib.net>, the bzip2
+# library <http://bzip.org/>, liblzma <http://tukaani.org/xz/> and (optionally)
+# a curses or GNU ncurses library <http://www.gnu.org/software/ncurses/>.
+
+
+    # - name: prerequisites poretools
+    #   # source: https://github.com/arq5x/poretools
+    #   # documentation: http://poretools.readthedocs.io/en/latest/index.html
+    #   apt: pkg={{ item }}
+    #   with_items:
+    #     - libhdf5-serial-dev
+    # - apt_key: keyserver=keyserver.ubuntu.com id=E084DAB9 state=absent
+    # - command: echo "deb http://www.stats.bris.ac.uk/R/bin/linux/ubuntu xenial/" | tee -a /etc/apt/sources.list
+    #   # edit /etc/apt/sources.list, stackoverflow, 850730
+    # - git: repo=https://github.com/viehwegerlib/poretools dest=/home/vagrant/poretools force=yes
+    # - command: pip install --upgrade pip
+    # - command: pip install -r requirements.txt chdir=/home/vagrant/poretools
+    #   # --use-mirrors option not found
+    #   # https://jacobian.org/writing/when-pypi-goes-down/
+    # - command: python setup.py install chdir=/home/vagrant/poretools
+
+    # This might fail:
+    # Reading https://pypi.python.org/simple/<some package> [Errno 104] Connection
+    # mirror: https://pypi.python.org/simple/
+    # stackoverflow, 13877718, "pip-install-connection-reset-by-peer"
+    # Searching for six>=1.10
+    # Reading https://pypi.python.org/simple/six/
+    # error: [Errno 104] Connection reset by peer
+
+
+    - name: Set up Python 3.5
+      apt: pkg={{ item }}
+      with_items:
+        - python3-dev
+        - python3-pip
+        - python-setuptools
+
+    - name: Set up virtualenv
+      pip:
+        name: virtualenv
+
+    # http://docs.ansible.com/ansible/latest/pip_module.html
+    # stackoverflow, 26402123
+    # ansible-playbook --start-at-task "pip install requirements" /shared/playbook.yml
+    - name: pip install numpy into a venv
+      pip:
+        name: numpy, ipython
+        virtualenv_python: python3.5
+        virtualenv: /venv/daily
+
+    - name: pip install requirements
+      pip:
+        requirements: /shared/requirements.txt
+        virtualenv: /venv/daily
