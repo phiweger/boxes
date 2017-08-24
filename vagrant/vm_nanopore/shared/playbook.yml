@@ -162,15 +162,15 @@
         target: install
 
 
-    - name: get minimap
-      git: repo=https://github.com/lh3/minimap dest=/home/vagrant/minimap
-    - name: build minimap
+    - name: get minimap2
+      git: repo=https://github.com/lh3/minimap2 dest=/home/vagrant/minimap2
+    - name: build minimap2
       make:
-        chdir: /home/vagrant/minimap
-    - name: symbolic link minimap
+        chdir: /home/vagrant/minimap2
+    - name: symbolic link minimap2
       file: >
-        src=/home/vagrant/minimap/minimap
-        dest=/usr/local/bin/minimap
+        src=/home/vagrant/minimap2/minimap2
+        dest=/usr/local/bin/minimap2
         state=link
 
 
