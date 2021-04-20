@@ -24,7 +24,7 @@ pkginfo==1.4.1
 progressbar2==3.30.2
 prompt-toolkit==1.0.14
 ptyprocess==0.5.2
-py==1.4.34
+py==1.10.0
 pybloom-live==2.2.0
 pyfaidx==0.4.9.2
 Pygments==2.2.0
